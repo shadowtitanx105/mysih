@@ -75,6 +75,45 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
       _showSettingsDialog('Location');
     }
   }
+  Future<void> _pickImageFromGallery() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        setState(() {
+          _capturedImage = File(image.path);
+        });
+
+        // Process image with AI model (simulated)
+        await _processImageWithAI();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Image selected and analyzed'),
+              backgroundColor: AppColors.successColor,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to select image: $e'),
+            backgroundColor: AppColors.errorColor,
+          ),
+        );
+      }
+    }
+  }
+
 
   Future<void> _getCurrentLocation() async {
     try {
@@ -522,23 +561,32 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
           children: [
             Row(
               children: [
-                Icon(
-                  _capturedImage != null 
-                      ? Icons.photo_camera 
-                      : Icons.camera_alt_outlined,
-                  color: _capturedImage != null 
-                      ? AppColors.successColor 
-                      : AppColors.errorColor,
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _requestCameraPermission,
+                    icon: const Icon(Icons.camera_alt),
+                    label: Text(_capturedImage != null ? 'Retake Photo' : 'Capture Photo'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _capturedImage != null
+                          ? AppColors.successColor
+                          : AppColors.primaryColor,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  'Photo Capture',
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    fontWeight: FontWeight.bold,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _pickImageFromGallery,
+                    icon: const Icon(Icons.photo_library),
+                    label: const Text('Upload from Gallery'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryColor,
+                    ),
                   ),
                 ),
               ],
             ),
+
             const SizedBox(height: 12),
             if (_capturedImage != null) ...[
               ClipRRect(

@@ -5,6 +5,7 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/utils/constants.dart';
 import '../../user/screens/user_home_screen.dart';
 import '../../authority/screens/authority_home_screen.dart';
+import '../../officer/screens/officer_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -161,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const AuthorityHomeScreen()),
+          MaterialPageRoute(builder: (context) => const OfficerHomeScreen()),
         );
       }
     } else {
@@ -209,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 // Title
                 Text(
-                  'Loan Verification',
+                  'Loan Saathi',
                   style: AppTextStyles.heading1,
                   textAlign: TextAlign.center,
                 ),

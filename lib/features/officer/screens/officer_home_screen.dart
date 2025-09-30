@@ -19,8 +19,8 @@ class OfficerHomeScreen extends StatefulWidget {
 
 class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
   Map<String, int> _stats = {
-    'total_loans': 0,
-    'pending_submissions': 0,
+    'total_loans': 1,
+    'pending_submissions': 1,
     'approved_today': 0,
     'total_beneficiaries': 0,
   };
@@ -29,8 +29,58 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
   @override
   void initState() {
     super.initState();
+    //print("OfficerHomeScreen initState called");
+    _maybeAddSampleReport();
     _loadDashboardStats();
+
   }
+
+  Future<void> _maybeAddSampleReport() async {
+    final authProvider = context.read<AuthProvider>();
+    final dbHelper = context.read<DatabaseHelper>();
+
+    print("Checking for sample report...");
+    try{
+      if (authProvider.currentUser?.role == 'authority') {
+        final existing = await dbHelper.query(
+          'media_submissions',
+          where: 'submission_id = ?',
+          whereArgs: ['sample_local_tractor'],
+        );
+        print("Existing sample: $existing");
+        if (existing.isEmpty) {
+          print("Inserting sample report...");
+          await addLocalSampleReport();
+        } else {
+          print("Sample already exists, not inserting.");
+        }
+      }
+    }
+    catch(e, stack){
+      print("Error in _maybeAddSampleReport: $e");
+      print(stack);
+    }
+  }
+
+
+  // Future<void> _maybeAddSampleReport() async {
+  //   final authProvider = context.read<AuthProvider>();
+  //   final dbHelper = context.read<DatabaseHelper>();
+  //
+  //   // Only for officer role
+  //   if (authProvider.currentUser?.role == 'officer') {
+  //     // Check if sample already exists
+  //     final existing = await dbHelper.query(
+  //       'media_submissions',
+  //       where: 'submission_id = ?',
+  //       whereArgs: ['sample_local_tractor'],
+  //     );
+  //     if (existing.isEmpty) {
+  //       await addLocalSampleReport();
+  //     }
+  //   }
+  // }
+
 
   Future<void> _loadDashboardStats() async {
     setState(() => _isLoading = true);
@@ -73,6 +123,49 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
       print('Error loading stats: $e');
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+// Add this method in _OfficerHomeScreenState
+
+  Future<void> addLocalSampleReport() async {
+    final dbHelper = context.read<DatabaseHelper>();
+
+    // Use a unique submission ID
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final sampleSubmission = MediaSubmissionModel(
+      submissionId: 'sample_local_tractor',
+      loanId: 1,
+      beneficiaryId: 1,
+      mediaType: 'image',
+      serverUrl: 'assets/Tractor.jpg',
+      filePath: 'assets/Tractor.jpg',
+      fileSize: 0,
+      thumbnailPath: 'assets/Tractor.jpg',
+      latitude: 19.213135,
+      longitude: 72.876678,
+      locationAccuracy: 0.0,
+      address: 'Sample Address',
+      capturedAt: now,
+      description: 'Tractor Report',
+      assetCategory: 'Agriculture',
+      status: 'pending',
+      aiValidationScore: 98,
+      aiValidationResult: 'tractor',
+      createdAt: now,      // <-- Add this
+      updatedAt: now,      // <-- Add this
+    );
+
+
+
+    // Insert into local DB
+    await dbHelper.insert('media_submissions', sampleSubmission.toMap());
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You have a report!')),
+      );
+      _loadDashboardStats();
+      print("Banana");
+      // Refresh stats if needed
     }
   }
 

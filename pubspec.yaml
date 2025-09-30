@@ -20,7 +20,7 @@ dependencies:
   # Firebase
   firebase_auth: ^4.15.0
   firebase_core: ^2.24.0
-  firebase_storage: ^11.5.0
+  firebase_storage: ^11.7.0
   cloud_firestore: ^4.13.0
   
   # Location & Media
@@ -67,3 +67,4 @@ flutter:
   assets:
     - assets/
     - assets/icons/
+    - assets/Tractor.jpg
