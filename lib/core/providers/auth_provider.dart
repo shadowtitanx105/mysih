@@ -8,7 +8,7 @@ import '../utils/constants.dart';
 class AuthProvider with ChangeNotifier {
   final DatabaseHelper _dbHelper;
   late final AuthService _authService;
-  
+
   UserModel? _currentUser;
   bool _isLoading = false;
   bool _isAuthenticated = false;
@@ -31,7 +31,7 @@ class AuthProvider with ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool(AppConstants.keyIsLoggedIn) ?? false;
-      
+
       if (isLoggedIn) {
         final userId = prefs.getInt(AppConstants.keyUserId);
         if (userId != null) {
@@ -40,7 +40,7 @@ class AuthProvider with ChangeNotifier {
             where: 'id = ?',
             whereArgs: [userId],
           );
-          
+
           if (users.isNotEmpty) {
             _currentUser = UserModel.fromMap(users.first);
             _isAuthenticated = true;
@@ -62,11 +62,11 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final result = await _authService.sendOTP(mobileNumber);
-      
+
       if (!result.success) {
         _errorMessage = result.message;
       }
-      
+
       return result.success;
     } catch (e) {
       _errorMessage = e.toString();
@@ -84,17 +84,17 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final result = await _authService.verifyOTP(mobileNumber, otp);
-      
+
       if (result.success && result.user != null) {
         _currentUser = result.user;
         _isAuthenticated = true;
-        
+
         // Save auth state
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool(AppConstants.keyIsLoggedIn, true);
         await prefs.setInt(AppConstants.keyUserId, result.user!.id!);
         await prefs.setString(AppConstants.keyUserRole, result.user!.role);
-        
+
         return true;
       } else {
         _errorMessage = result.message;
@@ -115,14 +115,14 @@ class AuthProvider with ChangeNotifier {
 
     try {
       await _authService.logout();
-      
+
       // Clear auth state
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
-      
-      // Clear database
-      await _dbHelper.clearAllData();
-      
+
+      // Clear only auth/session tables; keep reports for demo persistence
+      await _dbHelper.clearAuthData();
+
       _currentUser = null;
       _isAuthenticated = false;
     } catch (e) {

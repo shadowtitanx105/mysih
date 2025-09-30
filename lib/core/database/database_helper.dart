@@ -217,13 +217,19 @@ class DatabaseHelper {
   Future<void> _createIndexes(Database db) async {
     await db.execute('CREATE INDEX idx_users_mobile ON users(mobile_number)');
     await db.execute('CREATE INDEX idx_users_role ON users(role)');
-    await db.execute('CREATE INDEX idx_loans_beneficiary ON loans(beneficiary_id)');
+    await db
+        .execute('CREATE INDEX idx_loans_beneficiary ON loans(beneficiary_id)');
     await db.execute('CREATE INDEX idx_loans_status ON loans(status)');
-    await db.execute('CREATE INDEX idx_media_loan ON media_submissions(loan_id)');
-    await db.execute('CREATE INDEX idx_media_status ON media_submissions(status)');
-    await db.execute('CREATE INDEX idx_media_sync ON media_submissions(sync_status)');
-    await db.execute('CREATE INDEX idx_sync_queue_entity ON sync_queue(entity_type, entity_id)');
-    await db.execute('CREATE INDEX idx_sync_queue_created ON sync_queue(created_at)');
+    await db
+        .execute('CREATE INDEX idx_media_loan ON media_submissions(loan_id)');
+    await db
+        .execute('CREATE INDEX idx_media_status ON media_submissions(status)');
+    await db.execute(
+        'CREATE INDEX idx_media_sync ON media_submissions(sync_status)');
+    await db.execute(
+        'CREATE INDEX idx_sync_queue_entity ON sync_queue(entity_type, entity_id)');
+    await db.execute(
+        'CREATE INDEX idx_sync_queue_created ON sync_queue(created_at)');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -231,30 +237,39 @@ class DatabaseHelper {
     if (oldVersion < 2 && newVersion >= 2) {
       // Migration from v1 to v2: Add role-based tracking fields
       print('Migrating database from v$oldVersion to v$newVersion');
-      
+
       // Add new columns to loans table
       await db.execute('ALTER TABLE loans ADD COLUMN created_by INTEGER');
       await db.execute('ALTER TABLE loans ADD COLUMN created_by_role TEXT');
       await db.execute('ALTER TABLE loans ADD COLUMN updated_by INTEGER');
       await db.execute('ALTER TABLE loans ADD COLUMN updated_by_role TEXT');
-      await db.execute('ALTER TABLE loans ADD COLUMN sync_attempts INTEGER DEFAULT 0');
+      await db.execute(
+          'ALTER TABLE loans ADD COLUMN sync_attempts INTEGER DEFAULT 0');
       await db.execute('ALTER TABLE loans ADD COLUMN last_sync_error TEXT');
       await db.execute('ALTER TABLE loans ADD COLUMN firestore_id TEXT');
-      
+
       // Add new columns to media_submissions table
-      await db.execute('ALTER TABLE media_submissions ADD COLUMN reviewed_by_role TEXT');
-      await db.execute('ALTER TABLE media_submissions ADD COLUMN created_by INTEGER');
-      await db.execute('ALTER TABLE media_submissions ADD COLUMN created_by_role TEXT');
-      await db.execute('ALTER TABLE media_submissions ADD COLUMN updated_by INTEGER');
-      await db.execute('ALTER TABLE media_submissions ADD COLUMN updated_by_role TEXT');
-      await db.execute('ALTER TABLE media_submissions ADD COLUMN sync_attempts INTEGER DEFAULT 0');
-      await db.execute('ALTER TABLE media_submissions ADD COLUMN last_sync_error TEXT');
-      await db.execute('ALTER TABLE media_submissions ADD COLUMN firestore_id TEXT');
-      
+      await db.execute(
+          'ALTER TABLE media_submissions ADD COLUMN reviewed_by_role TEXT');
+      await db.execute(
+          'ALTER TABLE media_submissions ADD COLUMN created_by INTEGER');
+      await db.execute(
+          'ALTER TABLE media_submissions ADD COLUMN created_by_role TEXT');
+      await db.execute(
+          'ALTER TABLE media_submissions ADD COLUMN updated_by INTEGER');
+      await db.execute(
+          'ALTER TABLE media_submissions ADD COLUMN updated_by_role TEXT');
+      await db.execute(
+          'ALTER TABLE media_submissions ADD COLUMN sync_attempts INTEGER DEFAULT 0');
+      await db.execute(
+          'ALTER TABLE media_submissions ADD COLUMN last_sync_error TEXT');
+      await db.execute(
+          'ALTER TABLE media_submissions ADD COLUMN firestore_id TEXT');
+
       // Add new columns to sync_queue table
       await db.execute('ALTER TABLE sync_queue ADD COLUMN user_id INTEGER');
       await db.execute('ALTER TABLE sync_queue ADD COLUMN user_role TEXT');
-      
+
       // Populate created_by fields with officer_id where applicable
       await db.execute('''
         UPDATE loans 
@@ -264,14 +279,14 @@ class DatabaseHelper {
             updated_by_role = 'officer'
         WHERE officer_id IS NOT NULL AND created_by IS NULL
       ''');
-      
+
       await db.execute('''
         UPDATE media_submissions 
         SET created_by = beneficiary_id,
             created_by_role = 'beneficiary'
         WHERE created_by IS NULL
       ''');
-      
+
       print('Database migration completed successfully');
     }
   }
@@ -331,7 +346,8 @@ class DatabaseHelper {
   }
 
   // Helper method for raw queries
-  Future<List<Map<String, dynamic>>> rawQuery(String sql, [List<dynamic>? arguments]) async {
+  Future<List<Map<String, dynamic>>> rawQuery(String sql,
+      [List<dynamic>? arguments]) async {
     final db = await database;
     return await db.rawQuery(sql, arguments);
   }
@@ -354,6 +370,18 @@ class DatabaseHelper {
       await txn.delete('beneficiaries');
       await txn.delete('users');
       await txn.delete('otp_verifications');
+    });
+  }
+
+  // Clear only auth/session data (preserve reports for demo profiles)
+  Future<void> clearAuthData() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('audit_logs');
+      await txn.delete('sync_queue');
+      await txn.delete('otp_verifications');
+      await txn.delete('users');
+      // Intentionally keep beneficiaries, loans, media_submissions, officers
     });
   }
 

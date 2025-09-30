@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
-import '../services/sync_service.dart';
+import '../services/enhanced_sync_service.dart';
 
 class SyncProvider with ChangeNotifier {
-  final SyncService _syncService;
-  
+  final EnhancedSyncService _syncService;
+
   bool _isSyncing = false;
   int _pendingCount = 0;
   String? _lastSyncMessage;

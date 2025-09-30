@@ -15,11 +15,14 @@ class FirebaseService {
 
   FirebaseService(this._dbHelper);
 
+  // Expose Firestore for read-only access where needed
+  FirebaseFirestore get firestore => _firestore;
+
   /// Initialize Firebase with offline persistence
   Future<void> initialize() async {
     try {
       // Enable offline persistence
-      await _firestore.settings = const Settings(
+      _firestore.settings = const Settings(
         persistenceEnabled: true,
         cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
       );
@@ -87,7 +90,8 @@ class FirebaseService {
   // ==================== LOAN MANAGEMENT ====================
 
   /// Create loan in Firestore
-  Future<String?> createLoan(LoanModel loan, String userId, String userRole) async {
+  Future<String?> createLoan(
+      LoanModel loan, String userId, String userRole) async {
     try {
       final loanRef = _firestore.collection('loans').doc();
 
@@ -98,7 +102,8 @@ class FirebaseService {
         'loan_amount': loan.loanAmount,
         'loan_purpose': loan.loanPurpose,
         'scheme_name': loan.schemeName,
-        'sanctioned_date': Timestamp.fromMillisecondsSinceEpoch(loan.sanctionedDate),
+        'sanctioned_date':
+            Timestamp.fromMillisecondsSinceEpoch(loan.sanctionedDate),
         'disbursed_date': loan.disbursedDate != null
             ? Timestamp.fromMillisecondsSinceEpoch(loan.disbursedDate!)
             : null,
@@ -227,7 +232,8 @@ class FirebaseService {
         'longitude': submission.longitude,
         'location_accuracy': submission.locationAccuracy,
         'address': submission.address,
-        'captured_at': Timestamp.fromMillisecondsSinceEpoch(submission.capturedAt),
+        'captured_at':
+            Timestamp.fromMillisecondsSinceEpoch(submission.capturedAt),
         'description': submission.description,
         'asset_category': submission.assetCategory,
         'status': submission.status,
@@ -259,9 +265,8 @@ class FirebaseService {
     String userRole,
   ) async {
     try {
-      final submissionRef = _firestore
-          .collection('media_submissions')
-          .doc(firestoreSubmissionId);
+      final submissionRef =
+          _firestore.collection('media_submissions').doc(firestoreSubmissionId);
 
       // Get current document to preserve review history
       final doc = await submissionRef.get();
@@ -321,7 +326,8 @@ class FirebaseService {
   }
 
   /// Listen to media submissions
-  Stream<QuerySnapshot> listenToMediaSubmissions(String userId, String userRole) {
+  Stream<QuerySnapshot> listenToMediaSubmissions(
+      String userId, String userRole) {
     return getMediaSubmissionsQuery(userId, userRole).snapshots();
   }
 
@@ -405,7 +411,8 @@ class FirebaseService {
 
     // Get timestamps
     final localUpdatedAt = localData['updated_at'] as int?;
-    final remoteUpdatedAt = (remoteData['updated_at'] as Timestamp?)?.millisecondsSinceEpoch;
+    final remoteUpdatedAt =
+        (remoteData['updated_at'] as Timestamp?)?.millisecondsSinceEpoch;
 
     if (localUpdatedAt == null || remoteUpdatedAt == null) {
       return ConflictResolution(

@@ -1,0 +1,274 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==================== HELPER FUNCTIONS ====================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Get user role from users collection
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    // Check specific roles
+    function isBeneficiary() {
+      return getUserRole() == 'beneficiary';
+    }
+    
+    function isOfficer() {
+      return getUserRole() == 'officer';
+    }
+    
+    function isReviewer() {
+      return getUserRole() in ['reviewer', 'admin'];
+    }
+    
+    function isAdmin() {
+      return getUserRole() == 'admin';
+    }
+    
+    // Check if user owns the resource
+    function isOwner(ownerId) {
+      return request.auth.uid == ownerId;
+    }
+    
+    // Check if resource was created by current user
+    function isCreator(resource) {
+      return resource.data.created_by == request.auth.uid;
+    }
+    
+    // ==================== USERS COLLECTION ====================
+    
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if isAuthenticated() && isOwner(userId);
+      
+      // Only admins can create new users or update profiles
+      allow create, update: if isAdmin();
+      
+      // Admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // ==================== LOANS COLLECTION ====================
+    
+    match /loans/{loanId} {
+      // Read permissions:
+      // - Beneficiaries can read their own loans
+      // - Officers can read loans they created
+      // - Reviewers and Admins can read all loans
+      allow read: if isAuthenticated() && (
+        (isBeneficiary() && resource.data.beneficiary_id == request.auth.uid) ||
+        (isOfficer() && resource.data.officer_id == request.auth.uid) ||
+        isReviewer()
+      );
+      
+      // Create permissions:
+      // - Only officers can create loans
+      allow create: if isOfficer() && request.resource.data.officer_id == request.auth.uid;
+      
+      // Update permissions:
+      // - Officers can update their own pending loans
+      // - Reviewers can update any loan for review
+      // - Admins can update any loan
+      allow update: if isAuthenticated() && (
+        (isOfficer() && resource.data.officer_id == request.auth.uid && resource.data.status == 'pending') ||
+        isReviewer()
+      );
+      
+      // Delete permissions:
+      // - Only admins can delete loans
+      allow delete: if isAdmin();
+    }
+    
+    // ==================== MEDIA SUBMISSIONS COLLECTION ====================
+    
+    match /media_submissions/{submissionId} {
+      // Read permissions:
+      // - Beneficiaries can read their own submissions
+      // - Officers can read submissions they created
+      // - Reviewers and Admins can read all submissions
+      allow read: if isAuthenticated() && (
+        (isBeneficiary() && resource.data.beneficiary_id == request.auth.uid) ||
+        (isOfficer() && resource.data.created_by == request.auth.uid) ||
+        isReviewer()
+      );
+      
+      // Create permissions:
+      // - Beneficiaries and Officers can create submissions
+      allow create: if isAuthenticated() && (isBeneficiary() || isOfficer()) &&
+        request.resource.data.created_by == request.auth.uid;
+      
+      // Update permissions:
+      // - Users can update their own pending submissions
+      // - Reviewers can update submissions for review (add comments, change status)
+      // - Admins can update any submission
+      allow update: if isAuthenticated() && (
+        (resource.data.created_by == request.auth.uid && resource.data.status == 'pending') ||
+        isReviewer()
+      );
+      
+      // Delete permissions:
+      // - Users can delete their own pending submissions
+      // - Admins can delete any submission
+      allow delete: if isAuthenticated() && (
+        (resource.data.created_by == request.auth.uid && resource.data.status == 'pending') ||
+        isAdmin()
+      );
+    }
+    
+    // ==================== BENEFICIARIES COLLECTION ====================
+    
+    match /beneficiaries/{beneficiaryId} {
+      // Read permissions:
+      // - Beneficiaries can read their own data
+      // - Officers, Reviewers, and Admins can read all beneficiaries
+      allow read: if isAuthenticated() && (
+        (isBeneficiary() && resource.data.user_id == request.auth.uid) ||
+        isOfficer() ||
+        isReviewer()
+      );
+      
+      // Create/Update permissions:
+      // - Officers can create and update beneficiaries
+      // - Admins have full access
+      allow create, update: if isOfficer() || isAdmin();
+      
+      // Delete permissions:
+      // - Only admins can delete beneficiaries
+      allow delete: if isAdmin();
+    }
+    
+    // ==================== OFFICERS COLLECTION ====================
+    
+    match /officers/{officerId} {
+      // Read permissions:
+      // - Officers can read their own data
+      // - Reviewers and Admins can read all officers
+      allow read: if isAuthenticated() && (
+        (isOfficer() && resource.data.user_id == request.auth.uid) ||
+        isReviewer()
+      );
+      
+      // Create/Update/Delete permissions:
+      // - Only admins can manage officers
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // ==================== SYNC LOGS COLLECTION ====================
+    
+    match /sync_logs/{logId} {
+      // Users can read their own sync logs
+      allow read: if isAuthenticated() && resource.data.user_id == request.auth.uid;
+      
+      // Admins can read all sync logs
+      allow read: if isAdmin();
+      
+      // Any authenticated user can create sync logs
+      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
+      
+      // No updates or deletes allowed (append-only log)
+      allow update, delete: if false;
+    }
+    
+    // ==================== AUDIT LOGS COLLECTION ====================
+    
+    match /audit_logs/{logId} {
+      // Only admins can read audit logs
+      allow read: if isAdmin();
+      
+      // Any authenticated user can create audit logs
+      allow create: if isAuthenticated();
+      
+      // No updates or deletes allowed (append-only log)
+      allow update, delete: if false;
+    }
+    
+    // ==================== APP SETTINGS COLLECTION ====================
+    
+    match /app_settings/{settingId} {
+      // All authenticated users can read settings
+      allow read: if isAuthenticated();
+      
+      // Only admins can modify settings
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // ==================== NOTIFICATIONS COLLECTION ====================
+    
+    match /notifications/{notificationId} {
+      // Users can read their own notifications
+      allow read: if isAuthenticated() && resource.data.user_id == request.auth.uid;
+      
+      // System can create notifications for users
+      allow create: if isAuthenticated();
+      
+      // Users can mark their notifications as read
+      allow update: if isAuthenticated() && 
+        resource.data.user_id == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['is_read', 'read_at']);
+      
+      // Users can delete their own notifications
+      allow delete: if isAuthenticated() && resource.data.user_id == request.auth.uid;
+    }
+    
+    // ==================== ANALYTICS COLLECTION ====================
+    
+    match /analytics/{analyticsId} {
+      // Only admins can read analytics
+      allow read: if isAdmin();
+      
+      // System can write analytics
+      allow create, update: if isAuthenticated();
+      
+      // No deletes
+      allow delete: if false;
+    }
+    
+    // ==================== DEFAULT DENY ====================
+    
+    // Deny all other accesses by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// ==================== STORAGE RULES ====================
+
+// Note: These rules should be added to storage.rules file
+/*
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Images folder
+    match /images/{submissionId} {
+      // Allow read if user has access to the submission
+      allow read: if request.auth != null;
+      
+      // Allow write only by the creator
+      allow write: if request.auth != null;
+    }
+    
+    // Videos folder
+    match /videos/{submissionId} {
+      // Allow read if user has access to the submission
+      allow read: if request.auth != null;
+      
+      // Allow write only by the creator
+      allow write: if request.auth != null;
+    }
+    
+    // Thumbnails folder
+    match /thumbnails/{submissionId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+}
+*/

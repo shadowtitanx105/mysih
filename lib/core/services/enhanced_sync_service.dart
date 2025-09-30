@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../database/database_helper.dart';
+import 'sync_types.dart';
 import 'firebase_service.dart';
 import 'network_service.dart';
 import '../utils/constants.dart';
@@ -199,7 +200,7 @@ class EnhancedSyncService {
           // Handle conflicts
           String? firestoreId = mediaMap['firestore_id'] as String?;
           if (firestoreId != null) {
-            final remoteDoc = await _firebaseService._firestore
+            final remoteDoc = await _firebaseService.firestore
                 .collection('media_submissions')
                 .doc(firestoreId)
                 .get();
@@ -292,7 +293,7 @@ class EnhancedSyncService {
 
           String? firestoreId = loanMap['firestore_id'] as String?;
           if (firestoreId != null) {
-            final remoteDoc = await _firebaseService._firestore
+            final remoteDoc = await _firebaseService.firestore
                 .collection('loans')
                 .doc(firestoreId)
                 .get();

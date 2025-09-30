@@ -7,8 +7,9 @@ import 'core/providers/auth_provider.dart';
 import 'core/providers/connectivity_provider.dart';
 import 'core/providers/sync_provider.dart';
 import 'core/services/location_service.dart';
-import 'core/services/sync_service.dart';
+import 'core/services/enhanced_sync_service.dart';
 import 'core/services/network_service.dart';
+import 'core/services/firebase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +27,13 @@ void main() async {
     await locationService.initialize();
 
     final networkService = NetworkService();
-    final syncService = SyncService(databaseHelper, networkService);
+    final firebaseService = FirebaseService(databaseHelper);
+    await firebaseService.initialize();
+    final syncService = EnhancedSyncService(
+      databaseHelper,
+      firebaseService,
+      networkService,
+    );
 
     runApp(
       MultiProvider(
@@ -43,7 +50,8 @@ void main() async {
           Provider<DatabaseHelper>.value(value: databaseHelper),
           Provider<LocationService>.value(value: locationService),
           Provider<NetworkService>.value(value: networkService),
-          Provider<SyncService>.value(value: syncService),
+          Provider<EnhancedSyncService>.value(value: syncService),
+          Provider<FirebaseService>.value(value: firebaseService),
         ],
         child: const LoanUtilizationApp(),
       ),

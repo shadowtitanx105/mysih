@@ -153,9 +153,32 @@ class AssetCategories {
 // User Roles
 class UserRoles {
   static const String beneficiary = 'beneficiary';
+  static const String fieldOfficer = 'officer'; // Alias for backward compatibility
   static const String officer = 'officer';
   static const String reviewer = 'reviewer';
   static const String admin = 'admin';
+  
+  static const List<String> allRoles = [
+    beneficiary,
+    officer,
+    reviewer,
+    admin,
+  ];
+  
+  static String getRoleDisplayName(String role) {
+    switch (role.toLowerCase()) {
+      case beneficiary:
+        return 'Beneficiary';
+      case officer:
+        return 'Field Officer';
+      case reviewer:
+        return 'Reviewer';
+      case admin:
+        return 'Administrator';
+      default:
+        return 'Unknown';
+    }
+  }
   
   // Authority levels for conflict resolution
   static int getAuthorityLevel(String role) {
