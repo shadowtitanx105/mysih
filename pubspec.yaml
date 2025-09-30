@@ -1,0 +1,70 @@
+name: loan_utilization_app
+description: A Flutter application for digital loan utilization verification with offline support
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # Database
+  sqflite: ^2.3.0
+  path_provider: ^2.1.1
+  path: ^1.8.3
+  
+  # Firebase
+  firebase_auth: ^4.15.0
+  firebase_core: ^2.24.0
+  firebase_storage: ^11.5.0
+  cloud_firestore: ^4.13.0
+  
+  # Location & Media
+  geolocator: ^10.1.0
+  permission_handler: ^11.0.1
+  image_picker: ^1.0.4
+  camera: ^0.10.5+5
+  video_player: ^2.8.1
+  flutter_image_compress: ^2.1.0
+  
+  # Network
+  http: ^1.1.0
+  connectivity_plus: ^5.0.2
+  dio: ^5.4.0
+  
+  # UI Components
+  intl: ^0.18.1
+  cached_network_image: ^3.3.0
+  flutter_spinkit: ^5.2.0
+  
+  # File handling
+  mime: ^1.0.4
+  uuid: ^4.2.1
+  
+  # Encryption & Security
+  encrypt: ^5.0.3
+  crypto: ^3.0.3
+  flutter_secure_storage: ^9.0.0
+  
+  # Utils
+  shared_preferences: ^2.2.2
+  logger: ^2.0.2+1
+  
+  # Background processing
+  workmanager: ^0.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/
+    - assets/icons/
