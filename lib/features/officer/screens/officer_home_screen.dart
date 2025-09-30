@@ -29,144 +29,279 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
   @override
   void initState() {
     super.initState();
-    //print("OfficerHomeScreen initState called");
-    _maybeAddSampleReport();
-    _loadDashboardStats();
+    print("OfficerHomeScreen initState called");
+    _testDatabase();
 
+    _maybeAddTestData().then((_) {
+      try {
+        _maybeAddSampleReport();
+        _loadDashboardStats();
+      } catch (e) {
+        print("Error during initial data load: $e");
+      }
+    });
+  }
+
+
+
+  Future<void> _maybeAddTestData() async {
+    final dbHelper = context.read<DatabaseHelper>();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final authProvider = context.read<AuthProvider>();
+    final officerId = authProvider.currentUser?.id ?? 1;
+    final officerRole = authProvider.currentUser?.role ?? 'officer';
+
+    Future<void> safeInsert(String table, Map<String, dynamic> data) async {
+      try {
+        final exists = await dbHelper.query(table,
+            where: 'id = ?', whereArgs: [data['id']]);
+        if (exists.isEmpty) {
+          await dbHelper.insert(table, data);
+          print('Inserted test data into $table');
+        } else {
+          print('$table test data exists, skipping insert');
+        }
+      } catch (e) {
+        print('Error inserting test data into $table: $e');
+      }
+    }
+
+    print('Starting test data insertion...');
+    await safeInsert('users', {
+      'id': 1,
+      'mobile_number': '9999999999',
+      'role': 'beneficiary',
+      'full_name': 'Test Beneficiary',
+      'created_at': now,
+      'updated_at': now,
+    });
+
+    await safeInsert('beneficiaries', {
+      'id': 1,
+      'user_id': 1,
+      'beneficiary_code': 'BEN123',
+      'created_at': now,
+      'updated_at': now,
+    });
+
+    // Fixed loan insertion with missing required fields
+    await safeInsert('loans', {
+      'id': 1,
+      'loan_id': 'LN001',
+      'beneficiary_id': 1,
+      'officer_id': officerId,
+      'loan_amount': 10000.0,
+      'loan_purpose': 'Agriculture',
+      'scheme_name': 'Sample Scheme',
+      'sanctioned_date': now,
+      'status': 'pending',
+      'created_at': now,
+      'updated_at': now,
+      'created_by': officerId,  // Add this missing field
+      'created_by_role': officerRole,  // Add this missing field too
+    });
+
+    print('Finished test data insertion');
+  }
+
+
+
+
+
+  Future<void> _testDatabase() async {
+    try {
+      final dbHelper = context.read<DatabaseHelper>();
+
+      // Test basic database operation
+      print("Testing database connection...");
+      final testQuery = await dbHelper.query('sqlite_master', where: "type='table'");
+      print("Available tables: $testQuery");
+
+      // Test media_submissions table specifically
+      final tableInfo = await dbHelper.query('sqlite_master',
+          where: "type='table' AND name='media_submissions'");
+      print("media_submissions table info: $tableInfo");
+
+    } catch (e, stack) {
+      print("Database test error: $e");
+      print("Stack: $stack");
+    }
   }
 
   Future<void> _maybeAddSampleReport() async {
     final authProvider = context.read<AuthProvider>();
     final dbHelper = context.read<DatabaseHelper>();
 
-    print("Checking for sample report...");
-    try{
-      if (authProvider.currentUser?.role == 'authority') {
-        final existing = await dbHelper.query(
-          'media_submissions',
-          where: 'submission_id = ?',
-          whereArgs: ['sample_local_tractor'],
-        );
-        print("Existing sample: $existing");
-        if (existing.isEmpty) {
-          print("Inserting sample report...");
-          await addLocalSampleReport();
-        } else {
-          print("Sample already exists, not inserting.");
-        }
+    print("=== SAMPLE REPORT DEBUG START ===");
+    print("Current user: ${authProvider.currentUser}");
+    print("Current user role: ${authProvider.currentUser?.role}");
+
+    try {
+      print("Checking for existing sample report...");
+      final existing = await dbHelper.query(
+        'media_submissions',
+        where: 'submission_id = ?',
+        whereArgs: ['sample_local_tractor'],
+      );
+      print("Existing sample query result: $existing");
+      print("Existing sample count: ${existing.length}");
+
+      if (existing.isEmpty) {
+        print("No existing sample found. Inserting new sample...");
+        await addLocalSampleReport();
+        print("Sample insertion completed");
+      } else {
+        print("Sample already exists, not inserting.");
+        print("Existing sample data: ${existing.first}");
       }
-    }
-    catch(e, stack){
+
+      // Verify the insertion by querying again
+      print("Verifying sample exists after operation...");
+      final verifyExisting = await dbHelper.query(
+        'media_submissions',
+        where: 'submission_id = ?',
+        whereArgs: ['sample_local_tractor'],
+      );
+      print("Verification query result: $verifyExisting");
+      print("Verification count: ${verifyExisting.length}");
+
+      // Also check all media_submissions
+      print("Checking all media_submissions...");
+      final allSubmissions = await dbHelper.query('media_submissions');
+      print("All submissions count: ${allSubmissions.length}");
+      print("All submissions: $allSubmissions");
+
+    } catch (e, stack) {
       print("Error in _maybeAddSampleReport: $e");
-      print(stack);
+      print("Stack trace: $stack");
     }
+    print("=== SAMPLE REPORT DEBUG END ===");
   }
 
+  Future<void> addLocalSampleReport() async {
+    print("=== ADD LOCAL SAMPLE REPORT START ===");
 
-  // Future<void> _maybeAddSampleReport() async {
-  //   final authProvider = context.read<AuthProvider>();
-  //   final dbHelper = context.read<DatabaseHelper>();
-  //
-  //   // Only for officer role
-  //   if (authProvider.currentUser?.role == 'officer') {
-  //     // Check if sample already exists
-  //     final existing = await dbHelper.query(
-  //       'media_submissions',
-  //       where: 'submission_id = ?',
-  //       whereArgs: ['sample_local_tractor'],
-  //     );
-  //     if (existing.isEmpty) {
-  //       await addLocalSampleReport();
-  //     }
-  //   }
-  // }
+    try {
+      final dbHelper = context.read<DatabaseHelper>();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final authProvider = context.read<AuthProvider>();
+      final officerId = authProvider.currentUser?.id ?? 1;  // fallback dummy id
+      final officerRole = authProvider.currentUser?.role ?? 'officer';  // fallback dummy role
 
+      print("Creating MediaSubmissionModel...");
+      final sampleSubmission = MediaSubmissionModel(
+        submissionId: 'sample_local_tractor',
+        loanId: 1,
+        beneficiaryId: 1,
+        mediaType: 'image',
+        serverUrl: 'assets/Tractor.jpg',
+        filePath: 'assets/Tractor.jpg',
+        fileSize: 0,
+        thumbnailPath: 'assets/Tractor.jpg',
+        latitude: 19.213135,
+        longitude: 72.876678,
+        locationAccuracy: 0.0,
+        address: 'Sample Address',
+        capturedAt: now,
+        description: 'Tractor Report',
+        assetCategory: 'Agriculture',
+        status: 'pending',
+        aiValidationScore: 98,
+        aiValidationResult: 'tractor',
+        createdAt: now,
+        updatedAt: now,
+          // Newly added fields:
+          createdBy: officerId,
+          createdByRole: officerRole
+      );
+
+      print("Sample submission object created");
+      print("Sample submission data: ${sampleSubmission.toMap()}");
+
+      // Insert into local DB
+      print("Inserting into database...");
+      final insertResult = await dbHelper.insert('media_submissions', sampleSubmission.toMap());
+      print("Insert result: $insertResult");
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sample report created!')),
+        );
+        print("Refreshing dashboard stats...");
+        await _loadDashboardStats();
+        print("Dashboard stats refreshed");
+      }
+    } catch (e, stack) {
+      print("Error in addLocalSampleReport: $e");
+      print("Stack trace: $stack");
+    }
+
+    print("=== ADD LOCAL SAMPLE REPORT END ===");
+  }
 
   Future<void> _loadDashboardStats() async {
+    print("=== LOAD DASHBOARD STATS START ===");
     setState(() => _isLoading = true);
 
     try {
       final dbHelper = context.read<DatabaseHelper>();
 
       // Get total loans
+      print("Querying loans...");
       final loans = await dbHelper.query('loans');
+      print("Total loans found: ${loans.length}");
 
       // Get pending submissions
+      print("Querying pending submissions...");
       final pendingSubmissions = await dbHelper.query(
         'media_submissions',
         where: 'status = ?',
         whereArgs: ['pending'],
       );
+      print("Pending submissions found: ${pendingSubmissions.length}");
+      print("Pending submissions data: $pendingSubmissions");
 
       // Get approved submissions today
       final now = DateTime.now();
-      final todayStart =
-          DateTime(now.year, now.month, now.day).millisecondsSinceEpoch ~/ 1000;
+      final todayStart = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch ~/ 1000;
+      print("Querying approved submissions for today (timestamp >= $todayStart)...");
       final approvedToday = await dbHelper.query(
         'media_submissions',
         where: 'status = ? AND reviewed_at >= ?',
         whereArgs: ['approved', todayStart],
       );
+      print("Approved today found: ${approvedToday.length}");
 
       // Get total beneficiaries
+      print("Querying beneficiaries...");
       final beneficiaries = await dbHelper.query('beneficiaries');
+      print("Total beneficiaries found: ${beneficiaries.length}");
+
+      // Update stats
+      final newStats = {
+        'total_loans': loans.length,
+        'pending_submissions': pendingSubmissions.length,
+        'approved_today': approvedToday.length,
+        'total_beneficiaries': beneficiaries.length,
+      };
+
+      print("New stats: $newStats");
 
       setState(() {
-        _stats = {
-          'total_loans': loans.length,
-          'pending_submissions': pendingSubmissions.length,
-          'approved_today': approvedToday.length,
-          'total_beneficiaries': beneficiaries.length,
-        };
+        _stats = newStats;
       });
-    } catch (e) {
+
+      print("Stats updated in UI");
+
+    } catch (e, stack) {
       print('Error loading stats: $e');
+      print('Stack trace: $stack');
     } finally {
       setState(() => _isLoading = false);
+      print("Loading state set to false");
     }
-  }
-// Add this method in _OfficerHomeScreenState
 
-  Future<void> addLocalSampleReport() async {
-    final dbHelper = context.read<DatabaseHelper>();
-
-    // Use a unique submission ID
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final sampleSubmission = MediaSubmissionModel(
-      submissionId: 'sample_local_tractor',
-      loanId: 1,
-      beneficiaryId: 1,
-      mediaType: 'image',
-      serverUrl: 'assets/Tractor.jpg',
-      filePath: 'assets/Tractor.jpg',
-      fileSize: 0,
-      thumbnailPath: 'assets/Tractor.jpg',
-      latitude: 19.213135,
-      longitude: 72.876678,
-      locationAccuracy: 0.0,
-      address: 'Sample Address',
-      capturedAt: now,
-      description: 'Tractor Report',
-      assetCategory: 'Agriculture',
-      status: 'pending',
-      aiValidationScore: 98,
-      aiValidationResult: 'tractor',
-      createdAt: now,      // <-- Add this
-      updatedAt: now,      // <-- Add this
-    );
-
-
-
-    // Insert into local DB
-    await dbHelper.insert('media_submissions', sampleSubmission.toMap());
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You have a report!')),
-      );
-      _loadDashboardStats();
-      print("Banana");
-      // Refresh stats if needed
-    }
+    print("=== LOAD DASHBOARD STATS END ===");
   }
 
   Future<void> _logout() async {
@@ -493,7 +628,7 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
           'Create a new loan entry for beneficiary',
           Icons.add_circle_outline,
           AppColors.primaryColor,
-          () {
+              () {
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -508,7 +643,7 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
           'View and approve pending media submissions',
           Icons.rate_review,
           AppColors.accentColor,
-          () {
+              () {
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -523,7 +658,7 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
           'Add or update beneficiary information',
           Icons.people_outline,
           AppColors.successColor,
-          () {
+              () {
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -537,12 +672,12 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
   }
 
   Widget _buildActionCard(
-    String title,
-    String subtitle,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
+      String title,
+      String subtitle,
+      IconData icon,
+      Color color,
+      VoidCallback onTap,
+      ) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(

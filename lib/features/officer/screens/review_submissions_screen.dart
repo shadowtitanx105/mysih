@@ -39,7 +39,6 @@ class _ReviewSubmissionsScreenState extends State<ReviewSubmissionsScreen> {
     try {
       final dbHelper = context.read<DatabaseHelper>();
 
-      // Build query based on filters
       String whereClause = '';
       List<dynamic> whereArgs = [];
 
@@ -51,31 +50,41 @@ class _ReviewSubmissionsScreenState extends State<ReviewSubmissionsScreen> {
       if (_startDate != null && _endDate != null) {
         final startTimestamp = _startDate!.millisecondsSinceEpoch ~/ 1000;
         final endTimestamp = _endDate!.millisecondsSinceEpoch ~/ 1000;
-        
+
         if (whereClause.isNotEmpty) {
           whereClause += ' AND ';
         }
-        whereClause += 'media_submissions.captured_at BETWEEN ? AND ?';
+        whereClause += 'captured_at BETWEEN ? AND ?';
         whereArgs.addAll([startTimestamp, endTimestamp]);
       }
 
-      // Query with joins to get beneficiary and loan details
+      // First, get count of raw media_submissions without joins
+      final rawCountResult = await dbHelper.query(
+        'media_submissions',
+        where: whereClause.isNotEmpty ? whereClause : null,
+        whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      );
+      print('Raw media_submissions count: ${rawCountResult.length}');
+
+      // Then, run your joined query
       final db = await dbHelper.database;
       final results = await db.rawQuery('''
-        SELECT 
-          media_submissions.*,
-          users.full_name as beneficiary_name,
-          users.mobile_number as beneficiary_mobile,
-          loans.loan_id,
-          loans.scheme_name,
-          loans.loan_amount
-        FROM media_submissions
-        INNER JOIN beneficiaries ON media_submissions.beneficiary_id = beneficiaries.id
-        INNER JOIN users ON beneficiaries.user_id = users.id
-        INNER JOIN loans ON media_submissions.loan_id = loans.id
-        ${whereClause.isNotEmpty ? 'WHERE $whereClause' : ''}
-        ORDER BY media_submissions.captured_at DESC
-      ''', whereArgs);
+      SELECT 
+        media_submissions.*,
+        users.full_name as beneficiary_name,
+        users.mobile_number as beneficiary_mobile,
+        loans.loan_id,
+        loans.scheme_name,
+        loans.loan_amount
+      FROM media_submissions
+      INNER JOIN beneficiaries ON media_submissions.beneficiary_id = beneficiaries.id
+      INNER JOIN users ON beneficiaries.user_id = users.id
+      INNER JOIN loans ON media_submissions.loan_id = loans.id
+      ${whereClause.isNotEmpty ? 'WHERE $whereClause' : ''}
+      ORDER BY media_submissions.captured_at DESC
+    ''', whereArgs);
+      print('Joined query results count: ${results.length}');
+      print('Joined results: $results');
 
       setState(() {
         _submissions = results;
@@ -91,6 +100,7 @@ class _ReviewSubmissionsScreenState extends State<ReviewSubmissionsScreen> {
       setState(() => _isLoading = false);
     }
   }
+
 
   Future<void> _selectDateRange() async {
     final picked = await showDateRangePicker(

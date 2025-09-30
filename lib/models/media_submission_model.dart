@@ -25,6 +25,10 @@ class MediaSubmissionModel {
   final String syncStatus;
   final String? serverUrl;
 
+  // Newly added fields
+  final int createdBy;
+  final String createdByRole;
+
   MediaSubmissionModel({
     this.id,
     required this.submissionId,
@@ -51,6 +55,8 @@ class MediaSubmissionModel {
     required this.updatedAt,
     this.syncStatus = 'pending',
     this.serverUrl,
+    required this.createdBy,
+    required this.createdByRole,
   });
 
   factory MediaSubmissionModel.fromMap(Map<String, dynamic> map) {
@@ -80,6 +86,8 @@ class MediaSubmissionModel {
       updatedAt: map['updated_at'] as int,
       syncStatus: map['sync_status'] as String? ?? 'pending',
       serverUrl: map['server_url'] as String?,
+      createdBy: map['created_by'] as int,
+      createdByRole: map['created_by_role'] as String,
     );
   }
 
@@ -110,6 +118,8 @@ class MediaSubmissionModel {
       'updated_at': updatedAt,
       'sync_status': syncStatus,
       'server_url': serverUrl,
+      'created_by': createdBy,
+      'created_by_role': createdByRole,
     };
   }
 
@@ -139,6 +149,8 @@ class MediaSubmissionModel {
     int? updatedAt,
     String? syncStatus,
     String? serverUrl,
+    int? createdBy,
+    String? createdByRole,
   }) {
     return MediaSubmissionModel(
       id: id ?? this.id,
@@ -166,6 +178,8 @@ class MediaSubmissionModel {
       updatedAt: updatedAt ?? this.updatedAt,
       syncStatus: syncStatus ?? this.syncStatus,
       serverUrl: serverUrl ?? this.serverUrl,
+      createdBy: createdBy ?? this.createdBy,
+      createdByRole: createdByRole ?? this.createdByRole,
     );
   }
 }
